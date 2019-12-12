@@ -64,14 +64,6 @@ void HandleEvent(SDL_Event *event, V2 *player, float *player_angle)
 			player->x -= sinf(*player_angle) * MOVE_SPEED;
 			player->y -= cosf(*player_angle) * MOVE_SPEED;
 		}
-		/*if (event->key.keysym.scancode == SDL_SCANCODE_A)
-		{
-			player->x -= MOVE_SPEED;
-		}
-		if (event->key.keysym.scancode == SDL_SCANCODE_D)
-		{
-			player->x += MOVE_SPEED;
-		}*/
 		if (event->key.keysym.scancode == SDL_SCANCODE_UP)
 		{
 		}
@@ -132,8 +124,8 @@ void UpdateGame(Tile tiles[], V2 *player_tile, V2 *player, float player_angle, f
 		rect = { (int)tiles[i].rect.min.x, (int)tiles[i].rect.min.y, tile_size, tile_size };
 		//if (tiles[i].state == 1)
 		//{
-		//	SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
-		//	SDL_RenderFillRect(renderer, &rect);
+			SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
+			SDL_RenderFillRect(renderer, &rect);
 		//}
 		//else
 		//{
@@ -146,21 +138,22 @@ void UpdateGame(Tile tiles[], V2 *player_tile, V2 *player, float player_angle, f
 	/*int err = SDL_SetRenderDrawColor(renderer, 0x0, 0x0, 0x0, 0xFF);
 	
 	SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);*/
-	for (int x = 0; x < num_tiles_x; x++)
+	for (int x = 0; x < window_width; x++)
 	{
-		float ray_angle = (player_angle - FOV / 2) + ((float)x / (float)num_tiles_x) * FOV;
+		float ray_angle = (player_angle - FOV / 2) + ((float)x / (float)window_width) * FOV;
 		float distance_to_wall = 0.0f;
-		float corrected_distance_to_wall = 0.0f;
+		float corrected_distance_to_wall = 0;
 		float ray_to_player_angle = 0.0f;
 		int test_point_x = 0;
 		int test_point_y = 0;
+		int previous_x = 0;
 
 		//get unit vector for player angle
 		V2 player_unit_vector = { sinf(ray_angle), cosf(ray_angle) };
 
 		collision = false;
 
-		while (!collision && distance_to_wall < num_tiles_x)
+		while (!collision)
 		{
 			distance_to_wall += 0.1f;
 			test_point_x = (int)(player_tile->x + player_unit_vector.x * distance_to_wall);
@@ -212,7 +205,7 @@ void UpdateGame(Tile tiles[], V2 *player_tile, V2 *player, float player_angle, f
 			}
 		}
 		
-		//float wall;
+		/*float wall;
 		if (player_angle >= 0)
 		{
 			ray_to_player_angle = player_angle - ray_angle;
@@ -221,29 +214,16 @@ void UpdateGame(Tile tiles[], V2 *player_tile, V2 *player, float player_angle, f
 		{
 			ray_to_player_angle = ray_angle - player_angle;
 		}
-		corrected_distance_to_wall = distance_to_wall * cosf(ray_to_player_angle);
+		corrected_distance_to_wall = (int)(distance_to_wall * cosf(ray_to_player_angle));*/
 		
-		SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
-		int ceiling = (int)corrected_distance_to_wall / 2;
-		SDL_Rect ceiling_rect = { x * tile_size, 0, (x + 1) * tile_size, ceiling * tile_size };
-		SDL_RenderFillRect(renderer, &ceiling_rect);
-		int floor = num_tiles_y - (int)corrected_distance_to_wall / 2;
-		SDL_Rect floor_rect = { x * tile_size, floor * tile_size, (x + 1) * tile_size, num_tiles_y * tile_size };
-
-		if (corrected_distance_to_wall > 90)
-			SDL_SetRenderDrawColor(renderer, 0x8B, 0x00, 0x00, 0xFF);
-		else if (corrected_distance_to_wall < 90 && corrected_distance_to_wall > 30)
-			SDL_SetRenderDrawColor(renderer, 0xAC, 0x00, 0x00, 0xFF);
-		else
-			SDL_SetRenderDrawColor(renderer, 0xFF, 0x00, 0x00, 0xFF);
-
-		SDL_Rect wall_rect = { x * tile_size, ceiling * tile_size, (x+1) * tile_size, floor * tile_size };
-		SDL_RenderFillRect(renderer, &wall_rect);
-
-		SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
-		SDL_RenderFillRect(renderer, &floor_rect);
-		/*SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
-		SDL_RenderDrawLine(renderer, (int)player->x, (int)player->y, test_point_x * tile_size, test_point_y * tile_size);*/
+		
+		int wall_height = (int)(window_height / distance_to_wall);
+		int wall_start = -wall_height / 2 + window_height / 2;
+		int wall_end = wall_height / 2 + window_height / 2;
+		int red = 0xFF - distance_to_wall * 2;
+		if (red <= 0) { red = 0; }
+		SDL_SetRenderDrawColor(renderer, red, 0x00, 0x00, 0xFF);
+		SDL_RenderDrawLine(renderer, x, wall_start, x, wall_end);
 	}
 	SDL_RenderPresent(renderer);
 }

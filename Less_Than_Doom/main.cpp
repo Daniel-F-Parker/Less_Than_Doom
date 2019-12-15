@@ -4,7 +4,7 @@
 #include "Vector.h"
 #include <stdio.h>
 
-#define FPS 60.0f
+#define FPS 60
 #define RED 1
 #define GREEN 2
 #define BLUE 3
@@ -15,8 +15,8 @@ static int num_tiles_x = 120;
 static int num_tiles_y = 120;
 static int tile_size = 8; 
 static const int num_tiles = 14400;
-static int window_width = 960;
-static int window_height = 960;
+static int window_width = 720;
+static int window_height = 720;
 
 void Cleanup()
 {
@@ -49,7 +49,7 @@ void StartGame(Tile tiles[])
 	}
 }
 
-void HandleEvent(SDL_Event *event, V2 *player, float *player_angle)
+void HandleEvent(SDL_Event *event, Tile tiles[], V2 *player, V2 *player_tile, float *player_angle)
 {
 	SDL_PollEvent(event);
 	if (event->type == SDL_KEYDOWN)
@@ -58,11 +58,25 @@ void HandleEvent(SDL_Event *event, V2 *player, float *player_angle)
 		{
 			player->x += sinf(*player_angle) * MOVE_SPEED;
 			player->y += cosf(*player_angle) * MOVE_SPEED;
+			*player_tile = { player->x / tile_size, player->y / tile_size };
+			if (tiles[(int)player_tile->y*num_tiles_x + (int)player_tile->x].state > 0)
+			{
+				player->x -= sinf(*player_angle) * MOVE_SPEED;
+				player->y -= cosf(*player_angle) * MOVE_SPEED;
+				*player_tile = { player->x / tile_size, player->y / tile_size };
+			}
 		}
 		if (event->key.keysym.scancode == SDL_SCANCODE_S)
 		{
 			player->x -= sinf(*player_angle) * MOVE_SPEED;
 			player->y -= cosf(*player_angle) * MOVE_SPEED;
+			*player_tile = { player->x / tile_size, player->y / tile_size };
+			if (tiles[(int)player_tile->y*num_tiles_x + (int)player_tile->x].state > 0)
+			{
+				player->x += sinf(*player_angle) * MOVE_SPEED;
+				player->y += cosf(*player_angle) * MOVE_SPEED;
+				*player_tile = { player->x / tile_size, player->y / tile_size };
+			}
 		}
 		if (event->key.keysym.scancode == SDL_SCANCODE_UP)
 		{
@@ -117,27 +131,6 @@ void UpdateGame(Tile tiles[], V2 *player_tile, V2 *player, float player_angle, f
 	Tile line_begin_tile = {};
 	bool collision = false;
 
-	SDL_Rect rect;
-
-	for (int i = 0; i < num_tiles; i++)
-	{
-		rect = { (int)tiles[i].rect.min.x, (int)tiles[i].rect.min.y, tile_size, tile_size };
-		//if (tiles[i].state == 1)
-		//{
-			SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
-			SDL_RenderFillRect(renderer, &rect);
-		//}
-		//else
-		//{
-		//	SDL_SetRenderDrawColor(renderer, 0xFF, 0x00, 0x00, 0xFF);
-		//	SDL_RenderFillRect(renderer, &rect);
-		//}
-		//SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
-	}
-
-	/*int err = SDL_SetRenderDrawColor(renderer, 0x0, 0x0, 0x0, 0xFF);
-	
-	SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);*/
 	for (int x = 0; x < window_width; x++)
 	{
 		float ray_angle = (player_angle - FOV / 2) + ((float)x / (float)window_width) * FOV;
@@ -214,16 +207,20 @@ void UpdateGame(Tile tiles[], V2 *player_tile, V2 *player, float player_angle, f
 		{
 			ray_to_player_angle = ray_angle - player_angle;
 		}
-		corrected_distance_to_wall = (int)(distance_to_wall * cosf(ray_to_player_angle));*/
+		corrected_distance_to_wall = (distance_to_wall * cosf(ray_to_player_angle));*/
 		
 		
 		int wall_height = (int)(window_height / distance_to_wall);
 		int wall_start = -wall_height / 2 + window_height / 2;
 		int wall_end = wall_height / 2 + window_height / 2;
-		int red = 0xFF - distance_to_wall * 2;
+		int red = 0xFF - (int)distance_to_wall * 2;
+		SDL_SetRenderDrawColor(renderer, 0x1F, 0x1F, 0x1F, 0xFF);
+		SDL_RenderDrawLine(renderer, x, 0, x, wall_start);
 		if (red <= 0) { red = 0; }
 		SDL_SetRenderDrawColor(renderer, red, 0x00, 0x00, 0xFF);
 		SDL_RenderDrawLine(renderer, x, wall_start, x, wall_end);
+		SDL_SetRenderDrawColor(renderer, 0x50, 0x50, 0x50, 0xFF);
+		SDL_RenderDrawLine(renderer, x, wall_end, x, window_height);
 	}
 	SDL_RenderPresent(renderer);
 }
@@ -240,12 +237,10 @@ int main()
 	SDL_Window* window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, window_width, window_height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN);
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 	Tile tiles[num_tiles];
-	V2 player = { window_width / 2 , window_height / 2 };
+	V2 player = { (float)window_width / 2 , (float)window_height / 2 };
 	float player_angle = 0.0f;
 	V2 player_tile = { player.x / (float)tile_size, player.y / (float)tile_size };
-	V2 velocity;
-	float FOV = 3.14159f/3.0f;
-	Line line = { window_width / 2, window_height / 2, 1000, 450 };
+	float FOV = 3.14159f/4.0f;
 
 	StartGame(tiles);
 	do
@@ -255,8 +250,7 @@ int main()
 
 		start_time = SDL_GetTicks();
 
-		HandleEvent(&event, &player, &player_angle);
-		player_tile = { player.x / tile_size, player.y / tile_size };
+		HandleEvent(&event, tiles, &player, &player_tile, &player_angle);
 		UpdateGame(tiles, &player_tile, &player, player_angle, FOV, renderer);
 
 		end_time = SDL_GetTicks();

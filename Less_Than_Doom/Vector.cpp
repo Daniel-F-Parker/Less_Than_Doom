@@ -71,7 +71,7 @@ float MagnitudeSqrd(V2 val)
 
 float Magnitude(V2 val)
 {
-	float result = sqrt(MagnitudeSqrd(val));
+	float result = sqrtf(MagnitudeSqrd(val));
 	return result;
 }
 
